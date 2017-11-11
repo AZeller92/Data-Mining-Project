@@ -1,0 +1,60 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Nov 10 17:09:56 2017
+
+@author: andreas
+"""
+
+import json
+import matplotlib.pyplot as plt
+import numpy as np
+
+with open('train.json') as data:
+    d = json.load(data)
+# closes automatically
+    
+
+# we have two images per object ( band 1 and band two) and one angle
+
+
+## reshape all the shit
+## if angle is nan, we set it to zero
+## the range of the not nan angles is between 24 and 45 degrees
+nb_examples=1604
+x=np.zeros((nb_examples,2,75,75,))
+angle=np.zeros(nb_examples)
+y=np.zeros(nb_examples)
+for i in range(nb_examples):
+    x[i][0]=np.reshape(d[i]['band_1'],(75,75))
+    x[i][1]=np.reshape(d[i]['band_2'],(75,75))
+    if(d[i]['inc_angle']!='na'):
+        angle[i]=d[i]['inc_angle']
+    else:
+        angle[i]=0 
+    y[i]=d[i]['is_iceberg']    
+
+
+
+
+
+
+## how many icebergs:
+p_icebergs=np.sum(y)/nb_examples # 46 %
+max_angle=np.max(angle) # 45 degrees
+min_angle=np.min(angle) # 25 degrees
+min_ind=np.where(angle==min_angle)[0][0]
+plt.figure()
+plt.imshow(x[min_ind][0])
+np.shape(x[min_ind][0])
+
+##plot a bunch of piccs
+plt.figure(figsize=(15,15))
+for i in range(20,40):
+    plt.figure()
+    plt.imshow(x[i][0])
+    plt.figure()
+    plt.imshow(x[i][1])
+    plt.show()
+    print angle[i]
+    print y[i]
