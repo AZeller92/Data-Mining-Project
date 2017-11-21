@@ -1,0 +1,81 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Nov 10 17:09:56 2017
+
+@author: andreas
+"""
+
+
+import cv2 as cv
+import json
+import matplotlib.pyplot as plt
+import numpy as np
+
+with open('train.json') as data:
+    d = json.load(data)
+# closes automatically
+    
+
+# we have two images per object ( band 1 and band two) and one angle
+
+
+## reshape all the shit
+## if angle is nan, we set it to zero
+## the range of the not nan angles is between 24 and 45 degrees
+nb_examples=1604
+x=np.zeros((nb_examples,2,75,75,))
+angle=np.zeros(nb_examples)
+y=np.zeros(nb_examples)
+for i in range(nb_examples):
+    x[i][0]=np.reshape(d[i]['band_1'],(75,75))
+    x[i][1]=np.reshape(d[i]['band_2'],(75,75))
+    min=np.min(x[i][0])# -22
+    max=np.max(x[i][0])
+    x[i][0]=(x[i][0]-min)/(max-min)*255
+    min=np.min(x[i][1])# -22
+    max=np.max(x[i][1])
+    x[i][1]=(x[i][1]-min)/(max-min)*255
+    if(d[i]['inc_angle']!='na'):
+        angle[i]=d[i]['inc_angle']
+    else:
+        angle[i]=0 
+    y[i]=d[i]['is_iceberg']    
+
+
+
+x=x.astype(np.uint8)
+
+## plot a bunch of objects and their boundary boxes
+for i in range(10,20):  
+    u=np.copy(x[i][1])
+    v=cv.blur(u, (5,5))## to suppress the noise
+    
+    
+    #this part is for finding a good treshold for the contour
+    t4=v.reshape(5625)
+    t5=np.sort(t4)
+    m=t5[5615]# 10 th highest value
+    tre=m-(m-np.mean(v))/3
+    
+    #this part is for extracting the contour
+    ret,thresh = cv.threshold(v,tre,255,cv.THRESH_BINARY)
+    contours,hierarchy = cv.findContours(thresh, 1, 2)
+    cnt = contours[0]
+    
+    # this part is to find the boundary rectangle of the contour
+    xr,y,w,h = cv.boundingRect(cnt)
+    cv.rectangle(v,(xr,y),(xr+w,y+h),(0,255,0),1)
+    
+    #plot it and print the treshold
+    print tre
+    plt.imshow(v)
+    plt.show()
+#    
+    
+
+
+# if one band is a bad picture, take the other band
+
+#Numpy is a optimized library for fast array calculations.
+# So simply accessing each and every pixel values and modifying it will be very slow and it is discouraged.
