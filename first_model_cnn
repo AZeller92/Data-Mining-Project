@@ -1,0 +1,85 @@
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Activation, Flatten
+import numpy as np
+import matplotlib.pyplot as plt
+from keras import losses
+
+np.random.seed(7)
+from keras.layers import Convolution2D, MaxPooling2D
+from keras.utils import np_utils
+import json
+ 
+with open('train.json') as data:
+    d = json.load(data)
+    
+nb_examples=1604
+x=np.zeros((nb_examples,2,75,75))
+angle=np.zeros(nb_examples)
+y=np.zeros(nb_examples)
+for i in range(nb_examples):
+    x[i][0]=np.reshape(d[i]['band_1'],(75,75))
+    x[i][1]=np.reshape(d[i]['band_2'],(75,75))
+    if(d[i]['inc_angle']!='na'):
+        angle[i]=d[i]['inc_angle']
+    else:
+        angle[i]=0 
+    y[i]=d[i]['is_iceberg']  
+
+x=np.reshape(x,nb_examples,75,75,2)
+##useful??
+d=0
+#### frow the training set we, we have to split another little test
+#### set for validation
+size_test=100
+test_inds=np.random.randint(0,nb_examples,size_test)
+X_train=np.zeros((nb_examples-size_test,75,75,2))
+X_test=np.zeros((size_test,75,75,2))
+Y_train=np.zeros(nb_examples-size_test)
+Y_test=np.zeros(size_test)
+tr_count=0
+te_count=0
+
+for i in range(nb_examples):
+    if(i in test_inds):
+        X_train[tr_count]=x[i]
+        Y_train[tr_count]=y[i]
+        tr_count=tr_count+1
+    else:
+        X_test[tr_count]=x[i]
+        Y_test[tr_count]=y[i]
+        te_count=tr_count+1
+
+
+
+
+
+# Convert 1-dimensional class arrays to 2-dimensional class matrices
+Y_train = np_utils.to_categorical(Y_train, 2)
+Y_test = np_utils.to_categorical(Y_test, 2)
+### building the model
+model = Sequential()
+
+model.add(Convolution2D(32, (5, 5),strides=(1,1), activation='relu', input_shape=(75,75,2))) # little difference for new api
+# test stride strides=(2, 2). Is faster but not so good
+#*Note: The step size (stride) is (1,1) by default, and it can be tuned using the 'subsample' parameter.
+# 32 is the number ( depth of filters)	
+# interval 1: from 1 to 3. interval2: from 2 to 4 ...... interval 26: from 26 to 28 -> # =28 -size+1 for stride=1.
+print model.output_shape
+# (None, 25, 25, 8)
+# add more layers
+model.add(Convolution2D(32,( 5, 5), activation='relu')) # new API (3,3)
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Dropout(0.25))
+model.add(Flatten())
+model.add(Dense(256, activation='relu'))## takes too long
+model.add(Dropout(0.5))
+model.add(Dense(2, activation='softmax'))
+# compile the model
+model.compile(loss='logcosh',optimizer='adam',metrics=['accuracy'])# categorical crossentropy
+# fit the training data
+model.fit(X_train, Y_train, batch_size=32, epochs=1, verbose=1)# one epoch has still acc= 99.09 %#nb_epoch
+score = model.evaluate(X_test, Y_test, verbose=0)# accuracy in the test set= 58% not good
+# Returns the loss value & metrics values for the model in test mode.
+# batch size=100, epoch= 1   ->>> acc = 99.29 %
+#            100         5              99.31%
+#            5000        1              99.32%
